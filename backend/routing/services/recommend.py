@@ -82,6 +82,6 @@ def explain_ranking(winner: dict) -> str:
     return (
         "Ranked by fewest no-travel miles "
         f"({summary['no_travel_miles']}), then severe miles ({summary['severe_miles']}), "
-        f"high miles ({summary['high_miles']}), average risk ({average_text}), "
-        "then travel time."
+        f"high miles ({summary['high_miles']}), unknown miles ({summary['unknown_miles']}), "
+        f"average risk ({average_text}), then travel time."
     )

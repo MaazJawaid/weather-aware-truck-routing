@@ -1,6 +1,6 @@
 from django.test import SimpleTestCase
 
-from routing.services.recommend import build_segments, rank_routes, summarize_segments
+from routing.services.recommend import build_segments, explain_ranking, rank_routes, summarize_segments
 
 
 def _route(route_id, no_travel, severe, high, average, duration, unknown=0):
@@ -76,3 +76,8 @@ class RankTests(SimpleTestCase):
             ]
         )
         self.assertEqual(ordered[0]["id"], "known")
+
+    def test_reason_names_unknown_miles(self):
+        reason = explain_ranking(_route("missing", 0, 0, 0, None, 100, unknown=40))
+        self.assertIn("unknown miles (40)", reason)
+        self.assertIn("average risk (n/a)", reason)

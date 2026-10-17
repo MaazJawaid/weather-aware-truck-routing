@@ -68,14 +68,32 @@ def hours_from_block(block: dict) -> list[Hour]:
     return hours
 
 
-def parse_forecast_payload(payload: dict | list) -> dict[tuple[float, float], list[Hour]]:
+def forecasts_for_request(
+    keys: list[tuple[float, float]],
+    payload: dict | list,
+) -> dict[tuple[float, float], list[Hour]]:
+    """Attach each forecast to the coordinate we asked for.
+
+    Open-Meteo answers with the weather-grid point, which usually does not
+    round back to the requested coordinate. The array stays in request order,
+    so the returned latitude and longitude are not the lookup key.
+    """
     blocks = payload if isinstance(payload, list) else [payload]
+    if len(blocks) != len(keys):
+        logger.warning(
+            "weather response had %s blocks for %s requested points",
+            len(blocks),
+            len(keys),
+        )
+        return {}
+
     parsed: dict[tuple[float, float], list[Hour]] = {}
-    for block in blocks:
-        if not isinstance(block, dict) or "latitude" not in block:
-            continue
-        key = (round(float(block["latitude"]), 2), round(float(block["longitude"]), 2))
-        parsed[key] = hours_from_block(block)
+    for key, block in zip(keys, blocks):
+        if isinstance(block, dict) and block.get("hourly"):
+            parsed[key] = hours_from_block(block)
+        else:
+            logger.warning("weather point %.2f,%.2f had no hourly forecast", key[0], key[1])
+            parsed[key] = []
     return parsed
 
 
@@ -104,7 +122,7 @@ def _fetch_batch(keys: list[tuple[float, float]]) -> dict[tuple[float, float], l
         right = _fetch_batch(keys[middle:])
         return {**left, **right}
     response.raise_for_status()
-    return parse_forecast_payload(response.json())
+    return forecasts_for_request(keys, response.json())
 
 
 def _fetch_all(keys: list[tuple[float, float]]) -> dict[tuple[float, float], list[Hour]]:
